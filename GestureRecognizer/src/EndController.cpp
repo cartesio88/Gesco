@@ -5,7 +5,7 @@
  *      Author: cesar
  */
 
-#include <Kernel/EndController.h>
+#include "EndController.h"
 
 EndController::EndController(){
 	_running = true;

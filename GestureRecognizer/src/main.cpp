@@ -1,17 +1,19 @@
 /*
- * gesturerec.cpp
+ * main.cpp
  *
  *  Created on: 19/02/2011
  *      Author: cesar
+ *
+ *      Test application
  */
-#include <Controllers/InputEventController.h>
-#include <Controllers/HandDetector.h>
-#include <Controllers/GestureRecognizer.h>
-#include <Factories/VideoFactory.h>
-#include <Kernel/VideoSource.h>
-#include <Kernel/EndController.h>
-#include <Kernel/World.h>
-#include <Kernel/Logger.h>
+#include "InputEventController.h"
+#include "VideoFactory.h"
+#include "VideoSource.h"
+#include "EndController.h"
+#include "World.h"
+#include "Logger.h"
+
+#include <Recognizer.h>
 #include <string>
 
 using namespace std;
@@ -30,12 +32,13 @@ int main(int argc, char* argv[]) {
     InputEventController::getInstance()->pollEvents();
 
     // Detection Logic
-    HandDetector::getInstance()->detect();
-    GestureRecognizer::getInstance()->detect();
+    cv::Mat* frame = VideoFactory::getInstance()->getInstance()->getMainCamera().getLastFrame();
+    Recognizer::getInstance()->detect(*frame);
+
 
     // Print the results, if any
-    std::string& result = GestureRecognizer::getInstance()->getRecognizedGesture();
-    if(result != "") std::cout<<result<<endl;
+    //std::string& result = GestureRecognizer::getInstance()->getRecognizedGesture();
+    //if(result != "") std::cout<<result<<endl;
 
     // Draw
     World::getInstance()->drawWorld();
@@ -43,8 +46,7 @@ int main(int argc, char* argv[]) {
   
   //Freeing resources
   World::getInstance()->destroy();
-  HandDetector::getInstance()->destroy();
-  GestureRecognizer::getInstance()->destroy();
+  Recognizer::getInstance()->destroy();
   VideoFactory::getInstance()->destroy();
   
   return 0;

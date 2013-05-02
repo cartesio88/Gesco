@@ -12,9 +12,9 @@
 #include <opencv2/highgui/highgui.hpp>
 #include <SDL.h>
 
-#include <Factories/VideoFactory.h>
-#include <Kernel/Logger.h>
-#include <Kernel/Singleton.h>
+#include "VideoFactory.h"
+#include "Logger.h"
+#include "Singleton.h"
 
 #define FPS 15
 #define TEST_WINDOWS 6

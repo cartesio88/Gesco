@@ -9,7 +9,7 @@
 #define VIDEOSOURCE_H_
 
 #include <opencv2/highgui/highgui.hpp>
-#include <Kernel/Logger.h>
+#include "Logger.h"
 #include <string>
 
 

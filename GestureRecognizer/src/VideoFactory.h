@@ -8,9 +8,9 @@
 #ifndef VIDEOFACTORY_H_
 #define VIDEOFACTORY_H_
 
-#include <Kernel/Singleton.h>
-#include <Kernel/VideoSource.h>
-#include <Kernel/Logger.h>
+#include "Singleton.h"
+#include "VideoSource.h"
+#include "Logger.h"
 #include <string>
 #include <vector>
 

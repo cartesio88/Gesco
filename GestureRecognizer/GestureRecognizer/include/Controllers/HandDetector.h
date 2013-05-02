@@ -11,8 +11,8 @@
 #include <vector>
 #include <algorithm>
 #include <opencv2/opencv.hpp>
-#include <Kernel/World.h>
 #include <Kernel/Singleton.h>
+#include <Recognizer.h>
 
 // BackProjection threshold
 #define BACK_PROJ_THRES 5
@@ -34,8 +34,7 @@
 #define FLOODFILL_PARAM 35
 
 // Background mask
-#define ACCUMULATOR_SPEED 2.f * 1/FPS
-#define ACCUMULATOR_SPEED_FAST 9999999999999.f * 1/FPS
+#define ACCUMULATOR_SPEED 0.1
 #define THRES_ACCUMULATOR 100
 
 // Difference Mask
@@ -45,8 +44,6 @@
 #define EROSION_ITERATIONS 3
 
 class HandDetector: public Singleton<HandDetector>{
-	World* _world;
-
 	cv::Mat _prevOriginalFrame;
 	cv::Mat _differenceFrame;
 
@@ -75,13 +72,13 @@ class HandDetector: public Singleton<HandDetector>{
 	bool findMovingSeedPoint();
 
 	void loadSkinHistograms();
-	bool storeFrames();
+	bool storeFrames(cv::Mat& frame);
 
 public:
 	HandDetector();
 	virtual ~HandDetector();
 
-	void detect();
+	void detect(cv::Mat& frame);
 
 	cv::Mat& getOriginalFrame();
 	std::vector<cv::Mat>& getHandFrames();

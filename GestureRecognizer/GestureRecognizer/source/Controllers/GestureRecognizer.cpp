@@ -11,7 +11,6 @@ using namespace std;
 using namespace cv;
 
 GestureRecognizer::GestureRecognizer() {
-	_world = World::getInstance();
 	loadGesturesLib();
 }
 
@@ -54,17 +53,15 @@ void GestureRecognizer::detect() {
 		vector<vector<Point> > gesturesVector;
 		gesturesVector.push_back(recognizedGesture);
 		Mat gestureRecognizedImg = Mat::zeros(
-				Size(_world->getWidth(), _world->getHeight()), CV_8UC3);
+				Size(Recognizer::getInstance()->getWidth(), Recognizer::getInstance()->getHeight()), CV_8UC3);
 		drawContours(gestureRecognizedImg, gesturesVector, -1, Scalar(0, 0, 250),
 				2);
-		_world->setGestureRecognized(gestureRecognizedImg);
 
 		//Rep
 		vector<vector<Point> > contoursVector;
 		contoursVector.push_back(recognizedContour);
-		Mat contourImg = Mat::zeros(Size(_world->getWidth(), _world->getHeight()), CV_8UC1);
+		Mat contourImg = Mat::zeros(Size(Recognizer::getInstance()->getWidth(), Recognizer::getInstance()->getHeight()), CV_8UC1);
 		drawContours(contourImg, contoursVector, -1, Scalar(255), 2);
-		_world->setTestFrame(5, contourImg);
 
 	}
 }

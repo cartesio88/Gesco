@@ -5,7 +5,7 @@
  *      Author: cesar
  */
 
-#include <Kernel/Logger.h>
+#include "Logger.h"
 
 Logger::Logger() {
 	_logFile.open("log", std::ios::trunc);

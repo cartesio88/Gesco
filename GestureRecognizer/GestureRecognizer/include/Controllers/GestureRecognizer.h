@@ -9,7 +9,6 @@
 #define GESTURERECOGNIZER_H_
 
 #include <Kernel/Singleton.h>
-#include <Kernel/World.h>
 #include <Controllers/HandDetector.h>
 
 // Confidence between two contours
@@ -19,7 +18,6 @@
 #define CONTOUR_STDEV_DISPERSION 0.85 // The less, the more points remove
 
 class GestureRecognizer: public Singleton<GestureRecognizer>{
-	World* _world;
 	std::string _gesture;
 	std::vector<std::vector<cv::Point> > _gesturesLib;
 

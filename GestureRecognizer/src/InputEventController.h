@@ -10,9 +10,9 @@
 
 #include <vector>
 #include <SDL.h>
-#include <Kernel/Singleton.h>
-#include <Kernel/Logger.h>
-#include <Kernel/EndController.h>
+#include "Singleton.h"
+#include "Logger.h"
+#include "EndController.h"
 
 class InputEventController: public Singleton<InputEventController> {
 public:

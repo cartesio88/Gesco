@@ -13,18 +13,17 @@ using namespace std;
 HandDetector::HandDetector() :
 		_itSeedPoint(0) {
 
-	_world = World::getInstance();
-
-	_seedPoint = Point(_world->getHeight() / 2, _world->getWidth() / 2);
+	_seedPoint = Point(Recognizer::getInstance()->getHeight() / 2,
+			Recognizer::getInstance()->getWidth() / 2);
 
 	loadSkinHistograms();
 
 }
 
-void HandDetector::detect() {
+void HandDetector::detect(cv::Mat& frame) {
 
 	// Grab the frame
-	if (!storeFrames())
+	if (!storeFrames(frame))
 		return;
 
 	// Get difference mask
@@ -32,19 +31,9 @@ void HandDetector::detect() {
 	threshold(_differenceFrame, differenceMask, THRES_DIFF_MASK, 255,
 			THRESH_BINARY);
 
-
 	// Get skin mask
 	vector<Mat> skinMasks(_skinHistograms.size());
 	getSkinMask(skinMasks);
-
-
-
-	// Rep
-	if (skinMasks.size()) _world->setTestFrame(0, skinMasks.at(0));
-
-	//_world->setTestFrame(5, skinMasks.at(1));
-
-
 
 	// Clear them
 	_handFrames.clear();
@@ -53,9 +42,6 @@ void HandDetector::detect() {
 	for (unsigned int i = 0; i < _skinHistograms.size(); i++) {
 
 		Mat diffSkinMask = differenceMask | skinMasks.at(i);
-
-		//Rep
-		_world->setTestFrame(1, differenceMask);
 
 		// Get background mask
 		Mat backgroundMask;
@@ -67,8 +53,6 @@ void HandDetector::detect() {
 		Mat back3;
 		erode(back2, back3, Mat());
 
-		_world->setTestFrame(3, back3);
-
 		// Find seed! Movement + skin mask :)
 		findMovingSeedPoint();
 		if (!skinMasks.at(i).at<uchar>(_seedPoint.y, _seedPoint.x)
@@ -79,15 +63,9 @@ void HandDetector::detect() {
 		Mat floodedFrame;
 		getFloodedMask(back3, floodedFrame);
 
-
-
 		// Draw the seed point
 		// Rep
-		circle(floodedFrame, _seedPoint, 3,
-				Scalar(80), 5);
-
-		_world
-		->setTestFrame(4, floodedFrame);
+		circle(floodedFrame, _seedPoint, 3, Scalar(80), 5);
 
 		_handFrames.push_back(floodedFrame);
 
@@ -115,20 +93,18 @@ void HandDetector::getSkinMask(std::vector<cv::Mat>& masks) {
 }
 
 // Use accumulator!
-void HandDetector::getBackgroundMask(cv::Mat& frame, cv::Mat& backgroundMask, cv::Mat& mask) {
+void HandDetector::getBackgroundMask(cv::Mat& frame, cv::Mat& backgroundMask,
+		cv::Mat& mask) {
 
 	// Dont do that where the man moves!
 	Mat maskInv;
-	threshold(mask, maskInv, 180, 255,
-			THRESH_BINARY_INV);
+	threshold(mask, maskInv, 180, 255, THRESH_BINARY_INV);
 
-	accumulateWeighted(frame, _backgroundAccumulator,
-	ACCUMULATOR_SPEED, maskInv);
+	accumulateWeighted(frame, _backgroundAccumulator, ACCUMULATOR_SPEED,
+			maskInv);
 
 	Mat backgroundImage;
 	convertScaleAbs(_backgroundAccumulator, backgroundImage);
-
-	_world->setTestFrame(2, backgroundImage);
 
 	// Difference frame
 	backgroundMask = Mat::zeros(frame.rows, frame.cols, CV_8UC1);
@@ -246,19 +222,16 @@ bool HandDetector::findMovingSeedPoint() {
 	return false;
 }
 
-bool HandDetector::storeFrames() {
+bool HandDetector::storeFrames(cv::Mat& frame) {
 
 	if (_originalFrame.rows != 0) {
 		// Saving to previous frame. In GRAY to save time
 		cvtColor(_originalFrame, _prevOriginalFrame, CV_BGR2GRAY);
 
-		// Grab the frame after storing previous frame
-		Mat* frame;
-		frame = VideoFactory::getInstance()->getMainCamera().getLastFrame();
-
 		//Mat preEqual;
-		resize(*frame, _originalFrame,
-				Size(_world->getWidth(), _world->getHeight()));
+		resize(frame, _originalFrame,
+				Size(Recognizer::getInstance()->getWidth(),
+						Recognizer::getInstance()->getHeight()));
 		//equalizeHist(preEqual, _originalFrame);
 
 		// Convert it to gray
@@ -287,13 +260,13 @@ bool HandDetector::storeFrames() {
 		return true;
 	} else {
 		// Initializations here :)
-		_backgroundAccumulator = Mat::zeros(_world->getHeight(),
-				_world->getWidth(), CV_64FC3);
+		_backgroundAccumulator = Mat::zeros(
+				Recognizer::getInstance()->getHeight(),
+				Recognizer::getInstance()->getWidth(), CV_64FC3);
 
-		cv::Mat* frame;
-		frame = VideoFactory::getInstance()->getMainCamera().getLastFrame();
-		resize(*frame, _originalFrame,
-				Size(_world->getWidth(), _world->getHeight()));
+		resize(frame, _originalFrame,
+				Size(Recognizer::getInstance()->getWidth(),
+						Recognizer::getInstance()->getHeight()));
 
 		// Gaussian Blur
 		Mat auxsrc;
@@ -307,7 +280,7 @@ bool HandDetector::storeFrames() {
 		// Initialize the accumulator with the first frame TODO
 		for (int i = 0; i < 2000; i++)
 			accumulateWeighted(_originalFrameBlur, _backgroundAccumulator,
-			ACCUMULATOR_SPEED);
+					ACCUMULATOR_SPEED);
 
 		return false;
 	}

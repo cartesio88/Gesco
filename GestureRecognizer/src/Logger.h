@@ -8,7 +8,7 @@
 #ifndef LOGGER_H_
 #define LOGGER_H_
 
-#include <Kernel/Singleton.h>
+#include "Singleton.h"
 #include <string>
 #include <fstream>
 

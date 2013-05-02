@@ -8,7 +8,7 @@
 #ifndef ENDCONTROLLER_H_
 #define ENDCONTROLLER_H_
 
-#include <Kernel/Singleton.h>
+#include "Singleton.h"
 
 class EndController: public Singleton<EndController>{
 public:
