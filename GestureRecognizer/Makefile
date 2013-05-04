@@ -7,6 +7,7 @@ OBJSDIR = ./obj/
 SRCDIR = ./src/
 CXX = g++
 CXXFLAGS = -Wall -c -O2
+OBJSLIB = $(wildcard GestureRecognizer/obj/*.o)
 
 # Compilation mode
 ifeq ($(mode), release) # Release mode
@@ -16,7 +17,7 @@ else # Debug mode
 endif
 
 # Libraries
-LDFLAGS = -lSDL  `pkg-config --libs opencv` -LGestureRecognizer/lib -lgesturerecognizer
+LDFLAGS = -lSDL  `pkg-config --libs opencv`
 
 # Includes
 INCFLAGS = -I$(INCDIR) `pkg-config --cflags sdl` -IGestureRecognizer/include
@@ -30,8 +31,12 @@ OBJS= $(addprefix $(OBJSDIR),$(OBJSCRUDE))
 # Rules
 all: credentials dirs libs $(OUTPUTDIR)/test
 
+# Make the lib GestureRecognizer
+lib:
+	cd GestureRecognizer; $(MAKE) lib
+
 $(OUTPUTDIR)/test: $(OBJS)
-	$(CXX) $(OBJS) -Wall $(LDFLAGS) $(INCFLAGS) -o $(OUTPUTDIR)/test
+	$(CXX) $(OBJS) -Wall $(LDFLAGS) $(INCFLAGS) $(OBJSLIB) -o $(OUTPUTDIR)/test
 
 
 $(OBJSDIR)main.o: $(SRCDIR)main.cpp
@@ -43,7 +48,7 @@ $(OBJSDIR)%.o: $(SRCDIR)%.cpp $(SRCDIR)%.h
 
 install:
 	cd GestureRecognizer; $(MAKE) install
-	
+
 clean:
 	rm -Rf $(OBJSDIR) $(OUTPUTDIR) *~
 	rm -Rf log

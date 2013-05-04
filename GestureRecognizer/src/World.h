@@ -17,18 +17,13 @@
 #include "Singleton.h"
 
 #define FPS 15
-#define TEST_WINDOWS 6
 
-#define SHOW_GESTURE_TIME 1.5*FPS;
 
 class World: public Singleton<World> {
 	int _width;
 	int _height;
 	Uint32 _ticksLastEvent;
-	cv::Mat _gestureRecognizedImg;
-	cv::Mat _noGestureRecognizedImg;
-	int _timerShowGestureRecognized;
-	std::vector<cv::Mat> _testFramesVector;
+
 
 public:
 	World();
@@ -38,11 +33,6 @@ public:
 
 	int getWidth();
 	int getHeight();
-	void setTestFrame(unsigned int n, cv::Mat& mat);
-
-	void setGestureRecognized(cv::Mat& gestureImg);
-
-
 };
 
 

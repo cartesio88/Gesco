@@ -2,7 +2,7 @@
 # Cesar Mora Castro
 # 2013 - University of Minnesota
 
-OUTPUTDIR = ./lib/
+LIBDIR = ./lib/
 LIBNAME = libgesturerecognizer.so
 OBJSDIR = ./obj/
 INCDIR = ./include/
@@ -24,19 +24,19 @@ LDFLAGS = -lSDL  `pkg-config --libs opencv`
 INCFLAGS = -I$(INCDIR) `pkg-config --cflags sdl`
 
 # Objects
-OBJSCRUDE = HandDetector.o GestureRecognizer.o Recognizer.o Hand.o
+OBJSCRUDE = HandDetector.o GestureRecognizer.o Recognizer.o Hand.o\
+	DebugController.o
 
 OBJS= $(addprefix $(OBJSDIR),$(OBJSCRUDE))
 
-
 # Rules
-all:  dirs $(OUTPUTDIR)/$(LIBNAME) tool
+all:  dirs $(OBJS) tool
+
+lib: dirs  $(OBJS)
+	$(CXX) $(OBJS) -Wall $(LDFLAGS) $(INCFLAGS) -shared -o $(OUTPUTDIR)/$(LIBNAME)
 
 tool: 
 	cd tool; $(MAKE)	
-
-$(OUTPUTDIR)/$(LIBNAME): $(OBJS)
-	$(CXX) $(OBJS) -Wall $(LDFLAGS) $(INCFLAGS) -shared -o $(OUTPUTDIR)/$(LIBNAME)
 
 install: $(OUTPUTDIR)/$(LIBNAME)
 	cp $(OUTPUTDIR)/$(LIBNAME) /usr/lib/
@@ -59,5 +59,5 @@ clean:
 	rm -Rf $(OBJSDIR) $(OUTPUTDIR) *~
 
 dirs:
-	mkdir -p $(OUTPUTDIR)
+	mkdir -p $(LIBDIR)
 	mkdir -p $(OBJSDIR)

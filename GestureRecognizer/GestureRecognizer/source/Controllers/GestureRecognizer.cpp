@@ -10,12 +10,12 @@
 using namespace std;
 using namespace cv;
 
-GestureRecognizer::GestureRecognizer() {
+GestureRecognizer::GestureRecognizer(Hand* hand): _hand(hand) {
 	loadGesturesLib();
 }
 
 void GestureRecognizer::detect() {
-	vector<cv::Mat>& handFrames = HandDetector::getInstance()->getHandFrames();
+	vector<cv::Mat>& handsMasks = _hand->handsMasks();
 
 	// Select the minimum
 	double minDifference = 99;
@@ -24,8 +24,8 @@ void GestureRecognizer::detect() {
 	vector<Point> contour;
 	vector<Point> recognizedGesture;
 
-	for (unsigned int frameId = 0; frameId < handFrames.size(); frameId++) {
-		findContours(handFrames.at(frameId), contours, CV_RETR_EXTERNAL,
+	for (unsigned int frameId = 0; frameId < handsMasks.size(); frameId++) {
+		findContours(handsMasks.at(frameId), contours, CV_RETR_EXTERNAL,
 				CV_CHAIN_APPROX_SIMPLE);
 
 		processContours(contours, contour);
@@ -50,18 +50,21 @@ void GestureRecognizer::detect() {
 	}
 
 	if (minDifference < MAX_DIFFERENCE) {
-		vector<vector<Point> > gesturesVector;
-		gesturesVector.push_back(recognizedGesture);
-		Mat gestureRecognizedImg = Mat::zeros(
-				Size(Recognizer::getInstance()->getWidth(), Recognizer::getInstance()->getHeight()), CV_8UC3);
-		drawContours(gestureRecognizedImg, gesturesVector, -1, Scalar(0, 0, 250),
-				2);
+		//vector<vector<Point> > gesturesVector;
+		//gesturesVector.push_back(recognizedGesture);
+		//Mat gestureRecognizedImg = Mat::zeros(
+		//		Size(Recognizer::getInstance()->getWidth(), Recognizer::getInstance()->getHeight()), CV_8UC3);
+		//drawContours(gestureRecognizedImg, gesturesVector, -1, Scalar(0, 0, 250),
+		//		2);
+
+		// Store the gesture!!
+		cout<<"Gesture Found! Store it in the interface :)"<<endl;
 
 		//Rep
-		vector<vector<Point> > contoursVector;
-		contoursVector.push_back(recognizedContour);
-		Mat contourImg = Mat::zeros(Size(Recognizer::getInstance()->getWidth(), Recognizer::getInstance()->getHeight()), CV_8UC1);
-		drawContours(contourImg, contoursVector, -1, Scalar(255), 2);
+		//vector<vector<Point> > contoursVector;
+		//contoursVector.push_back(recognizedContour);
+		//Mat contourImg = Mat::zeros(Size(Recognizer::getInstance()->getWidth(), Recognizer::getInstance()->getHeight()), CV_8UC1);
+		//drawContours(contourImg, contoursVector, -1, Scalar(255), 2);
 
 	}
 }
@@ -87,8 +90,6 @@ void GestureRecognizer::processContours(
 		}
 	}
 
-	Point& seedPoint = HandDetector::getInstance()->getSeedPoint();
-
 	//Calculate and stdev, and keep the max dist
 	float maxDist = 0;
 	vector<Point>::iterator itPoint;
@@ -96,8 +97,8 @@ void GestureRecognizer::processContours(
 			++itPoint) {
 		Point& p = *itPoint;
 		float dist = sqrt(
-				pow((float) (p.x - seedPoint.x), 2)
-						+ pow((float) (p.y - seedPoint.y), 2));
+				pow((float) (p.x - _hand->seedPoint().x), 2)
+						+ pow((float) (p.y - _hand->seedPoint().y), 2));
 		if (dist > maxDist)
 			maxDist = dist;
 		stdev += dist;
@@ -142,6 +143,10 @@ void GestureRecognizer::loadGesturesLib() {
 
 std::string& GestureRecognizer::getRecognizedGesture() {
 	return _gesture;
+}
+
+void GestureRecognizer::setDebugController(DebugController* debugController){
+		_debugController = debugController;
 }
 
 GestureRecognizer::~GestureRecognizer() {

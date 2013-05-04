@@ -20,34 +20,43 @@ using namespace std;
 
 int main(int argc, char* argv[]) {
 
-  World::getInstance()->initWorld(320, 240);
-  VideoFactory::getInstance()->addVideoSource("cam", 0);
-  
-  // Main loop
-  while (EndController::getInstance()->isRunning()) {
-    // Grab a frame from the camera!
-    VideoFactory::getInstance()->getMainCamera().grabFrame();
-    
-    // Poll the events
-    InputEventController::getInstance()->pollEvents();
+	VideoFactory::getInstance()->addVideoSource("cam", 0);
 
-    // Detection Logic
-    cv::Mat* frame = VideoFactory::getInstance()->getInstance()->getMainCamera().getLastFrame();
-    Recognizer::getInstance()->detect(*frame);
+	float scale = 0.5;
 
+	Recognizer* recognizer = new Recognizer(
+			VideoFactory::getInstance()->getMainCamera().getWidth(),
+			VideoFactory::getInstance()->getMainCamera().getHeight(), scale,
+			true);
 
-    // Print the results, if any
-    //std::string& result = GestureRecognizer::getInstance()->getRecognizedGesture();
-    //if(result != "") std::cout<<result<<endl;
+	World::getInstance()->initWorld(
+			VideoFactory::getInstance()->getMainCamera().getWidth()*scale,
+			VideoFactory::getInstance()->getMainCamera().getHeight()*scale);
 
-    // Draw
-    World::getInstance()->drawWorld();
-  }
-  
-  //Freeing resources
-  World::getInstance()->destroy();
-  Recognizer::getInstance()->destroy();
-  VideoFactory::getInstance()->destroy();
-  
-  return 0;
+	// Main loop
+	while (EndController::getInstance()->isRunning()) {
+		// Grab a frame from the camera!
+		VideoFactory::getInstance()->getMainCamera().grabFrame();
+
+		// Poll the events
+		InputEventController::getInstance()->pollEvents();
+
+		// Detection Logic
+		cv::Mat* frame =
+				VideoFactory::getInstance()->getInstance()->getMainCamera().getLastFrame();
+		recognizer->detect(*frame);
+
+		// Print the results, if any
+		//std::string& result = GestureRecognizer::getInstance()->getRecognizedGesture();
+		//if(result != "") std::cout<<result<<endl;
+
+		// Draw
+		World::getInstance()->drawWorld();
+	}
+
+	//Freeing resources
+	World::getInstance()->destroy();
+	VideoFactory::getInstance()->destroy();
+
+	return 0;
 }

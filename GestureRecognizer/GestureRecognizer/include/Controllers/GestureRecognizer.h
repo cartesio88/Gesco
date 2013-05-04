@@ -8,7 +8,7 @@
 #ifndef GESTURERECOGNIZER_H_
 #define GESTURERECOGNIZER_H_
 
-#include <Kernel/Singleton.h>
+#include <Kernel/Hand.h>
 #include <Controllers/HandDetector.h>
 
 // Confidence between two contours
@@ -17,9 +17,17 @@
 // Percentage of the stdev that should be kept
 #define CONTOUR_STDEV_DISPERSION 0.85 // The less, the more points remove
 
-class GestureRecognizer: public Singleton<GestureRecognizer>{
+
+
+class GestureRecognizer{
+
+	Hand* _hand;
+
 	std::string _gesture;
 	std::vector<std::vector<cv::Point> > _gesturesLib;
+
+	// Debug
+	DebugController* _debugController;
 
 	// Get the bigest contour and removes the extreme points
 	void processContours(std::vector<std::vector<cv::Point> >& contours, std::vector<cv::Point>& contour);
@@ -27,11 +35,15 @@ class GestureRecognizer: public Singleton<GestureRecognizer>{
 	void loadGesturesLib();
 
 public:
-	GestureRecognizer();
+	GestureRecognizer(Hand* hand);
 	~GestureRecognizer();
 
 	void detect();
 	std::string& getRecognizedGesture();
+
+	// Debug controller
+	void setDebugController(DebugController* debugController);
+
 };
 
 

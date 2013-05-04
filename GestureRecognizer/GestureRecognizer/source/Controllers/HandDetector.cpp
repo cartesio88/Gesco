@@ -10,14 +10,12 @@
 using namespace cv;
 using namespace std;
 
-HandDetector::HandDetector() :
-		_itSeedPoint(0) {
+HandDetector::HandDetector(Hand* hand, int width, int height) :
+		_hand(hand) {
 
-	_seedPoint = Point(Recognizer::getInstance()->getHeight() / 2,
-			Recognizer::getInstance()->getWidth() / 2);
-
+	_width = width;
+	_height = height;
 	loadSkinHistograms();
-
 }
 
 void HandDetector::detect(cv::Mat& frame) {
@@ -26,48 +24,43 @@ void HandDetector::detect(cv::Mat& frame) {
 	if (!storeFrames(frame))
 		return;
 
+	// Clear hand frames
+	_hand->handsMasks().clear();
+
 	// Get difference mask
 	Mat differenceMask;
-	threshold(_differenceFrame, differenceMask, THRES_DIFF_MASK, 255,
-			THRESH_BINARY);
+	threshold(_movFrame, differenceMask, THRES_DIFF_MASK, 255, THRESH_BINARY);
 
 	// Get skin mask
 	vector<Mat> skinMasks(_skinHistograms.size());
 	getSkinMask(skinMasks);
 
-	// Clear them
-	_handFrames.clear();
+	// IMPROVE THIS PART! THERE ARE DIFFERENT SKIN HISTOGRAMS! WTF!!!
+	// Get background mask
+	Mat backgroundMask;
+	//getBackgroundMask(_frameBlur, backgroundMask, diffSkinMask);
+	getBackgroundMask(_frameBlur, backgroundMask);
 
 	// For each histogram
 	for (unsigned int i = 0; i < _skinHistograms.size(); i++) {
 
 		Mat diffSkinMask = differenceMask | skinMasks.at(i);
 
-		// Get background mask
-		Mat backgroundMask;
-		getBackgroundMask(_originalFrameBlur, backgroundMask, diffSkinMask);
-
-		Mat back2;
-		back2 = backgroundMask & diffSkinMask;
-
-		Mat back3;
-		erode(back2, back3, Mat());
+		Mat erodedBackgroundMask;
+		erode((backgroundMask & diffSkinMask), erodedBackgroundMask, Mat());
 
 		// Find seed! Movement + skin mask :)
 		findMovingSeedPoint();
-		if (!skinMasks.at(i).at<uchar>(_seedPoint.y, _seedPoint.x)
-				&& !interpolateSeedPoint(skinMasks.at(i), _originalFrame)) {
+		if (!skinMasks.at(i).at<uchar>(_hand->seedPoint().y,
+				_hand->seedPoint().x)
+				&& !interpolateSeedPoint(skinMasks.at(i), _frame)) {
 			return;
 		}
 
 		Mat floodedFrame;
-		getFloodedMask(back3, floodedFrame);
+		getFloodedMask(erodedBackgroundMask, floodedFrame);
 
-		// Draw the seed point
-		// Rep
-		circle(floodedFrame, _seedPoint, 3, Scalar(80), 5);
-
-		_handFrames.push_back(floodedFrame);
+		_hand->handsMasks().push_back(floodedFrame);
 
 	}
 }
@@ -83,7 +76,7 @@ void HandDetector::getSkinMask(std::vector<cv::Mat>& masks) {
 	MatND backProj;
 	for (unsigned int i = 0; i < _skinHistograms.size(); i++) {
 
-		calcBackProject(&_originalFrameHSV, 1, channels, _skinHistograms.at(i),
+		calcBackProject(&_frameHSV, 1, channels, _skinHistograms.at(i),
 				backProj, ranges, 1, true);
 
 		threshold(backProj, masks.at(i), BACK_PROJ_THRES, 255, THRESH_BINARY);
@@ -93,24 +86,23 @@ void HandDetector::getSkinMask(std::vector<cv::Mat>& masks) {
 }
 
 // Use accumulator!
-void HandDetector::getBackgroundMask(cv::Mat& frame, cv::Mat& backgroundMask,
-		cv::Mat& mask) {
+void HandDetector::getBackgroundMask(cv::Mat& frame, cv::Mat& backgroundMask) {
 
 	// Dont do that where the man moves!
-	Mat maskInv;
-	threshold(mask, maskInv, 180, 255, THRESH_BINARY_INV);
+	//Mat maskInv;
+	//threshold(mask, maskInv, 180, 255, THRESH_BINARY_INV);
 
-	accumulateWeighted(frame, _backgroundAccumulator, ACCUMULATOR_SPEED,
-			maskInv);
+	//accumulateWeighted(frame, _backgroundAcc, ACCUMULATOR_SPEED, maskInv);
+	accumulateWeighted(frame, _backgroundAcc, ACCUMULATOR_SPEED);
 
 	Mat backgroundImage;
-	convertScaleAbs(_backgroundAccumulator, backgroundImage);
+	convertScaleAbs(_backgroundAcc, backgroundImage);
 
 	// Difference frame
-	backgroundMask = Mat::zeros(frame.rows, frame.cols, CV_8UC1);
+	backgroundMask = Mat::zeros(_height, _width, CV_8UC1);
 
-	for (int i = 0; i < frame.rows; i++) {
-		for (int j = 0; j < frame.cols; j++) {
+	for (int i = 0; i < _height; i++) {
+		for (int j = 0; j < _width; j++) {
 			float diff = pow(
 					(float) frame.at<uchar>(i, j * 3)
 							- backgroundImage.at<uchar>(i, j * 3), 2)
@@ -139,21 +131,20 @@ void HandDetector::getFloodedMask(cv::Mat& frame, cv::Mat& floodedMask) {
 
 	try {
 		Mat mask;
-		mask = Mat::zeros(frame.rows + 2, frame.cols + 2, CV_8UC1);
+		mask = Mat::zeros(_height + 2, _width + 2, CV_8UC1);
 
-		floodFill(frame, mask, _seedPoint, Scalar(), 0, Scalar(lo, lo, lo),
-				Scalar(up, up, up), flags);
+		floodFill(frame, mask, _hand->seedPoint(), Scalar(), 0,
+				Scalar(lo, lo, lo), Scalar(up, up, up), flags);
 
-		floodedMask = Mat(frame.rows, frame.cols, CV_8UC1);
+		floodedMask = Mat(_height, _width, CV_8UC1);
 
-		for (int i = 0; i < floodedMask.rows; i++) {
-			for (int j = 0; j < floodedMask.cols; j++) {
+		for (int i = 0; i < _height; i++) {
+			for (int j = 0; j < _width; j++) {
 				floodedMask.at<uchar>(i, j) = mask.at<uchar>(i + 1, j + 1);
 			}
 		}
 
 	} catch (cv::Exception& e) {
-		cout << "Error in floodFill: " << _seedPoint << endl;
 	}
 }
 
@@ -161,11 +152,11 @@ bool HandDetector::interpolateSeedPoint(cv::Mat& skinMask,
 		cv::Mat& frameWithMask) {
 
 	// Inside a KERNEL, look for a "bunch of white pixels", defined by LOCAL_KERNEL
-	for (int i = _seedPoint.x - SEED_POINT_KERNEL;
-			i < _seedPoint.x + SEED_POINT_KERNEL;
+	for (int i = _hand->seedPoint().x - SEED_POINT_KERNEL;
+			i < _hand->seedPoint().x + SEED_POINT_KERNEL;
 			i = i + SEED_POINT_LOCAL_KERNEL) {
-		for (int j = _seedPoint.y - SEED_POINT_KERNEL;
-				j < _seedPoint.y + SEED_POINT_KERNEL;
+		for (int j = _hand->seedPoint().y - SEED_POINT_KERNEL;
+				j < _hand->seedPoint().y + SEED_POINT_KERNEL;
 				j = j + SEED_POINT_LOCAL_KERNEL) {
 
 			if (frameWithMask.at<Point3i>(i, j).x == 0)
@@ -180,13 +171,13 @@ bool HandDetector::interpolateSeedPoint(cv::Mat& skinMask,
 						&& skinMask.at<uchar>(j, i - SEED_POINT_LOCAL_KERNEL)
 						&& skinMask.at<uchar>(j, i + SEED_POINT_LOCAL_KERNEL)) {
 					// Check sizes
-					if (_seedPoint.x < 0 || _seedPoint.y < 0
-							|| _seedPoint.x >= _originalFrame.cols
-							|| _seedPoint.y >= _originalFrame.rows) {
+					if (_hand->seedPoint().x < 0 || _hand->seedPoint().y < 0
+							|| _hand->seedPoint().x >= _width
+							|| _hand->seedPoint().y >= _height) {
 						return false;
 					}
-					_seedPoint.x = i;
-					_seedPoint.y = j;
+					_hand->seedPoint().x = i;
+					_hand->seedPoint().y = j;
 					return true;
 				}
 			}
@@ -202,9 +193,9 @@ bool HandDetector::findMovingSeedPoint() {
 	int nPoints = 0;
 	Point candidate(0, 0);
 
-	for (int i = 0; i < _differenceFrame.cols; i++) {
-		for (int j = 0; j < _differenceFrame.rows; j++) {
-			if (_differenceFrame.at<uchar>(j, i) > MIN_DIFF_MOV) {
+	for (int i = 0; i < _movFrame.cols; i++) {
+		for (int j = 0; j < _movFrame.rows; j++) {
+			if (_movFrame.at<uchar>(j, i) > MIN_DIFF_MOV) {
 				nPoints++;
 				candidate += Point(i, j);
 			}
@@ -215,7 +206,7 @@ bool HandDetector::findMovingSeedPoint() {
 		candidate.x /= nPoints;
 		candidate.y /= nPoints;
 
-		_seedPoint = candidate;
+		_hand->seedPoint() = candidate;
 		return true;
 	}
 
@@ -224,21 +215,19 @@ bool HandDetector::findMovingSeedPoint() {
 
 bool HandDetector::storeFrames(cv::Mat& frame) {
 
-	if (_originalFrame.rows != 0) {
+	if (_frame.rows != 0) {
 		// Saving to previous frame. In GRAY to save time
-		cvtColor(_originalFrame, _prevOriginalFrame, CV_BGR2GRAY);
+		cvtColor(_frame, _prevframe, CV_BGR2GRAY);
 
 		//Mat preEqual;
-		resize(frame, _originalFrame,
-				Size(Recognizer::getInstance()->getWidth(),
-						Recognizer::getInstance()->getHeight()));
+		resize(frame, _frame, Size(_width, _height));
 		//equalizeHist(preEqual, _originalFrame);
 
 		// Convert it to gray
-		cvtColor(_originalFrame, _originalFrameGray, CV_BGR2GRAY);
+		cvtColor(_frame, _frameGray, CV_BGR2GRAY);
 
 		// Difference frame
-		absdiff(_originalFrameGray, _prevOriginalFrame, _differenceFrame);
+		absdiff(_frameGray, _prevframe, _movFrame);
 
 		// Gaussian Blur
 		Mat auxsrc;
@@ -246,27 +235,21 @@ bool HandDetector::storeFrames(cv::Mat& frame) {
 		double GAUS_SIGMA = 5;
 
 		// Color blur
-		GaussianBlur(_originalFrame, _originalFrameBlur, GAUS_KERNEL,
-				GAUS_SIGMA);
+		GaussianBlur(_frame, _frameBlur, GAUS_KERNEL, GAUS_SIGMA);
 
 		// Gray blur
-		GaussianBlur(_originalFrameGray, _originalFrameGrayBlur, GAUS_KERNEL,
-				GAUS_SIGMA);
+		GaussianBlur(_frameGray, _frameGrayBlur, GAUS_KERNEL, GAUS_SIGMA);
 
 		// Convert to HSV
-		cvtColor(_originalFrameBlur, _originalFrameHSV, CV_BGR2HSV);
-		split(_originalFrameHSV, _vectorOriginalFrameHSV);
+		cvtColor(_frameBlur, _frameHSV, CV_BGR2HSV);
+		split(_frameHSV, _vectorFrameHSV);
 
 		return true;
 	} else {
 		// Initializations here :)
-		_backgroundAccumulator = Mat::zeros(
-				Recognizer::getInstance()->getHeight(),
-				Recognizer::getInstance()->getWidth(), CV_64FC3);
+		_backgroundAcc = Mat::zeros(_height, _width, CV_64FC3);
 
-		resize(frame, _originalFrame,
-				Size(Recognizer::getInstance()->getWidth(),
-						Recognizer::getInstance()->getHeight()));
+		resize(frame, _frame, Size(_width, _height));
 
 		// Gaussian Blur
 		Mat auxsrc;
@@ -274,13 +257,11 @@ bool HandDetector::storeFrames(cv::Mat& frame) {
 		double GAUS_SIGMA = 5;
 
 		// Color blur
-		GaussianBlur(_originalFrame, _originalFrameBlur, GAUS_KERNEL,
-				GAUS_SIGMA);
+		GaussianBlur(_frame, _frameBlur, GAUS_KERNEL, GAUS_SIGMA);
 
 		// Initialize the accumulator with the first frame TODO
 		for (int i = 0; i < 2000; i++)
-			accumulateWeighted(_originalFrameBlur, _backgroundAccumulator,
-					ACCUMULATOR_SPEED);
+			accumulateWeighted(_frameBlur, _backgroundAcc, ACCUMULATOR_SPEED);
 
 		return false;
 	}
@@ -308,16 +289,8 @@ void HandDetector::loadSkinHistograms() {
 	cout << "Read " << (histN - 1) << " skin histogramms!" << endl;
 }
 
-cv::Point& HandDetector::getSeedPoint() {
-	return _seedPoint;
-}
-
-Mat& HandDetector::getOriginalFrame() {
-	return _originalFrame;
-}
-
-std::vector<cv::Mat>& HandDetector::getHandFrames() {
-	return _handFrames;
+void HandDetector::setDebugController(DebugController* debugController) {
+	_debugController = debugController;
 }
 
 HandDetector::~HandDetector() {
